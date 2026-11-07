@@ -438,6 +438,23 @@
             }
         }
         
+        .youtube-player {
+            top: auto;
+            bottom: 70px;
+            left: 15px;
+            gap: 6px;
+        }
+
+        .youtube-player iframe {
+            width: 200px;
+            height: 200px;
+            border: 0;
+        }
+
+        .youtube-player a {
+            color: white;
+            font-size: 12px;
+        }
     </style>
     <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&display=swap" rel="stylesheet">
 </head>
@@ -461,10 +478,12 @@
         <div class="music-text">Play Our Song</div>
     </div>
 
+    <div class="music-player youtube-player">
+        <div id="youtube-player"></div>
+        <a href="https://youtu.be/mRP72Ib2e9I" target="_blank" rel="noopener noreferrer">Open song on YouTube</a>
+    </div>
+
     <div id="night-sky">
-        <audio id="background-music" loop>
-            <source src="s.mp4" type="audio/mpeg">
-        </audio>
         
         <!-- Realistic Moon with Craters -->
         <div class="moon-container">
@@ -510,61 +529,84 @@
         // ============================================================
         // AUDIO HANDLING
         // ============================================================
-        const audio = document.getElementById('background-music');
         const playButton = document.getElementById('play-button');
         const musicWaves = document.getElementById('music-waves');
+        const musicText = document.querySelector('.music-text');
+        let musicPlayer;
+        let playerReady = false;
         let isPlaying = false;
-        let audioStarted = false;
 
-        function startAudio() {
-            if (audioStarted) return;
-            audio.play().then(() => {
-                audioStarted = true;
-                isPlaying = true;
-                updatePlayButton();
-            }).catch(() => {});
-        }
+        playButton.setAttribute('role', 'button');
+        playButton.setAttribute('tabindex', '0');
+        playButton.setAttribute('aria-label', 'Play our song');
+        playButton.setAttribute('aria-pressed', 'false');
+        musicText.setAttribute('aria-live', 'polite');
+        musicText.textContent = 'Loading song...';
 
         function updatePlayButton() {
-            if (isPlaying) {
-                playButton.classList.add('playing');
-                musicWaves.style.display = 'flex';
-                document.querySelector('.music-text').textContent = 'Now Playing';
-            } else {
-                playButton.classList.remove('playing');
-                musicWaves.style.display = 'none';
-                document.querySelector('.music-text').textContent = 'Play Our Song';
-            }
+            playButton.classList.toggle('playing', isPlaying);
+            playButton.setAttribute('aria-pressed', String(isPlaying));
+            playButton.setAttribute('aria-label', isPlaying ? 'Pause our song' : 'Play our song');
+            musicWaves.style.display = isPlaying ? 'flex' : 'none';
+            musicText.textContent = isPlaying ? 'Now Playing' : 'Play Our Song';
         }
 
-        function togglePlay(e) {
-            e.stopPropagation();
-            if (!audioStarted) {
-                startAudio();
-                return;
-            }
-            if (isPlaying) {
-                audio.pause();
-                isPlaying = false;
-            } else {
-                audio.play();
-                isPlaying = true;
-            }
-            updatePlayButton();
+        window.onYouTubeIframeAPIReady = function() {
+            musicPlayer = new YT.Player('youtube-player', {
+                width: 200,
+                height: 200,
+                videoId: 'mRP72Ib2e9I',
+                playerVars: {
+                    playsinline: 1,
+                    loop: 1,
+                    playlist: 'mRP72Ib2e9I',
+                    ...(location.protocol.startsWith('http') ? { origin: location.origin } : {})
+                },
+                events: {
+                    onReady: function(event) {
+                        playerReady = true;
+                        event.target.getIframe().title = 'Our song on YouTube';
+                        updatePlayButton();
+                    },
+                    onStateChange: function(event) {
+                        isPlaying = event.data === YT.PlayerState.PLAYING;
+                        updatePlayButton();
+                    },
+                    onAutoplayBlocked: function() {
+                        isPlaying = false;
+                        updatePlayButton();
+                    },
+                    onError: function() {
+                        playerReady = false;
+                        isPlaying = false;
+                        updatePlayButton();
+                        musicText.textContent = 'Open song on YouTube';
+                    }
+                }
+            });
+        };
+
+        function togglePlay(event) {
+            event.stopPropagation();
+            if (!playerReady) return;
+            if (isPlaying) musicPlayer.pauseVideo();
+            else musicPlayer.playVideo();
         }
-
-        window.addEventListener('load', function() {
-            setTimeout(startAudio, 500);
-        });
-
-        document.addEventListener('touchstart', startAudio, { once: true });
-        document.addEventListener('click', startAudio, { once: true });
 
         playButton.addEventListener('click', togglePlay);
-        playButton.addEventListener('touchstart', function(e) {
-            e.preventDefault();
-            togglePlay(e);
+        playButton.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                togglePlay(event);
+            }
         });
+
+        const youtubeApi = document.createElement('script');
+        youtubeApi.src = 'https://www.youtube.com/iframe_api';
+        youtubeApi.onerror = function() {
+            musicText.textContent = 'Open song on YouTube';
+        };
+        document.head.appendChild(youtubeApi);
 
         // ============================================================
         // RESPONSIVE CAROUSEL
