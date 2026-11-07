@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        html, body {
+            height: 100%;
+            width: 100%;
+            touch-action: none;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            position: fixed;
+            top: 0;
+            left: 0;
+        }
+        
+        body {
+            display: flex;
+            background: #111;
+            perspective: 1000px;
+            transform-style: preserve-3d;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        
+        #night-sky {
+            position: fixed;
+            top: 0; 
+            left: 0;
+            width: 100vw; 
+            height: 100vh;
+            z-index: -2;
+            overflow: hidden;
+            background: radial-gradient(ellipse at bottom, #0a0e1a 0%, #05070e 100%);
+        }
+        
+        /* ===== REALISTIC MOON WITH CRATERS ===== */
+        .moon-container {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            z-index: 2;
+        }
+        
+        @media (min-width: 768px) {
+            .moon-container {
+                top: 30px;
+                right: 30px;
+            }
+        }
+        
+        #moon {
+            width: 50px;
+            height: 50px;
+            background: radial-gradient(circle at 30% 35%, #f5f0e8 30%, #e8e0d0 60%, #d4c8b0 100%);
+            border-radius: 50%;
+            box-shadow: 0 0 30px 8px rgba(255, 235, 200, 0.3),
+                        0 0 60px 20px rgba(255, 235, 200, 0.15),
+                        inset -8px -8px 20px rgba(180, 160, 140, 0.5);
+            position: relative;
+        }
+        
+        @media (min-width: 768px) {
+            #moon {
+                width: 80px;
+                height: 80px;
+                box-shadow: 0 0 40px 12px rgba(255, 235, 200, 0.3),
+                            0 0 80px 30px rgba(255, 235, 200, 0.15),
+                            inset -12px -12px 30px rgba(180, 160, 140, 0.5);
+            }
+        }
+        
+        /* Moon Craters */
+        .moon-crater {
+            position: absolute;
+            border-radius: 50%;
+            background: radial-gradient(ellipse at 40% 40%, rgba(200, 185, 165, 0.2), rgba(160, 140, 120, 0.4));
+            box-shadow: inset 2px 2px 6px rgba(100, 80, 60, 0.3),
+                        inset -1px -1px 4px rgba(220, 210, 190, 0.2);
+        }
+        
+        .moon-crater-1 {
+            width: 30%;
+            height: 25%;
+            top: 25%;
+            left: 20%;
+        }
+        
+        .moon-crater-2 {
+            width: 20%;
+            height: 18%;
+            top: 10%;
+            left: 55%;
+        }
+        
+        .moon-crater-3 {
+            width: 22%;
+            height: 20%;
+            top: 55%;
+            left: 60%;
+        }
+        
+        .moon-crater-4 {
+            width: 15%;
+            height: 14%;
+            top: 45%;
+            left: 15%;
+        }
+        
+        .moon-crater-5 {
+            width: 12%;
+            height: 11%;
+            top: 70%;
+            left: 35%;
+        }
+        
+        .moon-crater-6 {
+            width: 8%;
+            height: 7%;
+            top: 30%;
+            left: 75%;
+        }
+        
+        .moon-crater-7 {
+            width: 10%;
+            height: 9%;
+            top: 75%;
+            left: 70%;
+        }
+        
+        .moon-glow {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            background: radial-gradient(ellipse at 40% 40%, rgba(255, 235, 200, 0.12), transparent 70%);
+            width: 150%;
+            height: 150%;
+            pointer-events: none;
+        }
+        
+        @media (min-width: 768px) {
+            .moon-glow {
+                width: 180%;
+                height: 180%;
+            }
+        }
+        
+        .moon-light {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: radial-gradient(circle at 60% 30%, rgba(255, 245, 230, 0.08), transparent 70%);
+            pointer-events: none;
+        }
+        
+        #stars, #falling-stars {
+            position: absolute;
+            top: 0; 
+            left: 0;
+            width: 100vw; 
+            height: 100vh;
+            pointer-events: none;
+            z-index: 1;
+            display: block;
+        }
+        
+        #drag-container, #spin-container {
+            position: relative;
+            display: flex;
+            margin: auto;
+            transform-style: preserve-3d;
+            transform: rotateX(-10deg);
+        }
+        
+        #drag-container img, #drag-container video {
+            transform-style: preserve-3d;
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            line-height: 200px;
+            font-size: 50px;
+            text-align: center;
+            box-shadow: 0 0 8px rgba(255,255,255,0.5);
+            -webkit-box-reflect: below 5px linear-gradient(transparent, transparent, #0003);
+            border-radius: 12px;
+            object-fit: cover;
+            transition: all 0.5s ease;
+            cursor: pointer;
+            touch-action: none;
+        }
+        
+        #drag-container img:active, #drag-container video:active {
+            transform: scale(0.95);
+        }
+        
+        #drag-container p {
+            font-family: 'Dancing Script', cursive;
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translate(-50%,-50%) rotateX(90deg);
+            color: #fff;
+            font-size: 1.2rem;
+            text-align: center;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.7);
+            width: 85%;
+            max-width: 400px;
+            pointer-events: none;
+            line-height: 1.6;
+        }
+        
+        @media (min-width: 768px) {
+            #drag-container p {
+                font-size: 1.8rem;
+                max-width: 500px;
+            }
+        }
+        
+        #ground {
+            width: 600px;
+            height: 600px;
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translate(-50%,-50%) rotateX(90deg);
+            background: radial-gradient(center center, farthest-side, #9993, transparent);
+        }
+        
+        @media (min-width: 768px) {
+            #ground {
+                width: 900px;
+                height: 900px;
+            }
+        }
+        
+        /* ===== MUSIC PLAYER ===== */
+        .music-player {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        @media (min-width: 768px) {
+            .music-player {
+                top: 30px;
+                left: 30px;
+                gap: 15px;
+            }
+        }
+        
+        .play-btn-container {
+            position: relative;
+            width: 55px;
+            height: 55px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        @media (min-width: 768px) {
+            .play-btn-container {
+                width: 80px;
+                height: 80px;
+            }
+        }
+        
+        .play-btn-outer {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 20px rgba(102, 126, 234, 0.5), 0 0 40px rgba(102, 126, 234, 0.3);
+            animation: pulse 2s infinite;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .play-btn-outer:active {
+            transform: scale(0.9);
+        }
+        
+        .play-btn-inner {
+            width: 70%;
+            height: 70%;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.95);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .play-icon {
+            width: 0;
+            height: 0;
+            border-top: 10px solid transparent;
+            border-bottom: 10px solid transparent;
+            border-left: 16px solid #667eea;
+            margin-left: 4px;
+            transition: all 0.3s ease;
+        }
+        
+        @media (min-width: 768px) {
+            .play-icon {
+                border-top: 12px solid transparent;
+                border-bottom: 12px solid transparent;
+                border-left: 20px solid #667eea;
+            }
+        }
+        
+        .playing .play-icon {
+            width: 16px;
+            height: 16px;
+            border: none;
+            background: 
+                linear-gradient(90deg, #667eea 33%, transparent 33%, transparent 66%, #667eea 66%);
+            margin-left: 0;
+        }
+        
+        @media (min-width: 768px) {
+            .playing .play-icon {
+                width: 20px;
+                height: 20px;
+            }
+        }
+        
+        .music-waves {
+            display: none;
+            gap: 3px;
+            align-items: end;
+            height: 20px;
+            margin-top: 5px;
+        }
+        
+        @media (min-width: 768px) {
+            .music-waves {
+                height: 30px;
+                gap: 4px;
+                margin-top: 10px;
+            }
+        }
+        
+        .wave {
+            width: 3px;
+            background: linear-gradient(to top, #667eea, #764ba2);
+            border-radius: 2px;
+            animation: wave 1.5s ease-in-out infinite;
+        }
+        
+        @media (min-width: 768px) {
+            .wave {
+                width: 4px;
+            }
+        }
+        
+        .wave:nth-child(2) { animation-delay: 0.2s; height: 50%; }
+        .wave:nth-child(3) { animation-delay: 0.4s; height: 70%; }
+        .wave:nth-child(4) { animation-delay: 0.6s; height: 60%; }
+        .wave:nth-child(5) { animation-delay: 0.8s; height: 40%; }
+        
+        .music-text {
+            color: white;
+            font-family: 'Dancing Script', cursive;
+            font-size: 0.8rem;
+            text-shadow: 0 0 10px rgba(102, 126, 234, 0.8);
+            opacity: 0.9;
+            text-align: center;
+        }
+        
+        @media (min-width: 768px) {
+            .music-text {
+                font-size: 1.2rem;
+            }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        @keyframes wave {
+            0%, 100% { height: 30%; }
+            50% { height: 80%; }
+        }
+        
+        @keyframes spin {
+            from { transform: rotateY(0deg); }
+            to { transform: rotateY(360deg); }
+        }
+        
+        @keyframes spinRevert {
+            from { transform: rotateY(360deg); }
+            to { transform: rotateY(0deg); }
+        }
+        
+        .message-container {
+            position: absolute;
+            bottom: 15px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            z-index: 10;
+            color: white;
+            font-family: 'Dancing Script', cursive;
+            font-size: 1rem;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.7);
+            padding: 0 15px;
+            pointer-events: none;
+        }
+        
+        @media (min-width: 768px) {
+            .message-container {
+                font-size: 1.5rem;
+                bottom: 20px;
+            }
+        }
+        
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Music Player -->
+    <div class="music-player" id="music-player">
+        <div class="play-btn-container">
+            <div class="play-btn-outer" id="play-button">
+                <div class="play-btn-inner">
+                    <div class="play-icon" id="play-icon"></div>
+                </div>
+            </div>
+        </div>
+        <div class="music-waves" id="music-waves">
+            <div class="wave"></div>
+            <div class="wave"></div>
+            <div class="wave"></div>
+            <div class="wave"></div>
+            <div class="wave"></div>
+        </div>
+        <div class="music-text">Play Our Song</div>
+    </div>
+
+    <div id="night-sky">
+        <audio id="background-music" loop>
+            <source src="s.mp4" type="audio/mpeg">
+        </audio>
+        
+        <!-- Realistic Moon with Craters -->
+        <div class="moon-container">
+            <div id="moon">
+                <div class="moon-crater moon-crater-1"></div>
+                <div class="moon-crater moon-crater-2"></div>
+                <div class="moon-crater moon-crater-3"></div>
+                <div class="moon-crater moon-crater-4"></div>
+                <div class="moon-crater moon-crater-5"></div>
+                <div class="moon-crater moon-crater-6"></div>
+                <div class="moon-crater moon-crater-7"></div>
+                <div class="moon-glow"></div>
+                <div class="moon-light"></div>
+            </div>
+        </div>
+        
+        <canvas id="stars"></canvas>
+        <canvas id="falling-stars"></canvas>
+    </div>
+
+    <div id="drag-container">
+        <div id="spin-container">
+            <img src="WhatsApp Image 2026-11-07 at 15.20.21 (1).jpeg" alt="Beautiful memory">
+            <img src="WhatsApp Image 2026-11-07 at 15.20.21.jpeg" alt="Beautiful memory">
+            <img src="WhatsApp Image 2026-11-07 at 15.20.22 (1).jpeg" alt="Beautiful memory">
+            <img src="WhatsApp Image 2026-11-07 at 15.20.22 (2).jpeg" alt="Beautiful memory">
+            <img src="WhatsApp Image 2026-11-07 at 15.20.22.jpeg" alt="Beautiful memory">
+            <img src="WhatsApp Image 2026-11-07 at 15.20.23 (1).jpeg" alt="Beautiful memory">
+            <img src="WhatsApp Image 2026-11-07 at 15.20.23 (2).jpeg" alt="Beautiful memory">
+            <img src="WhatsApp Image 2026-11-07 at 15.20.23.jpeg" alt="Beautiful memory">
+            <img src="WhatsApp Image 2026-11-07 at 15.20.24 (1).jpeg" alt="Beautiful memory">
+            <img src="WhatsApp Image 2026-11-07 at 15.20.24.jpeg" alt="Beautiful memory">
+            <p>A little something for you, Dikshu! Hope this brings a tiny smile to your face. Lots of love! ♡</p>
+        </div>
+        <div id="ground"></div>
+    </div>
+
+    <div class="message-container">
+        Made with ❤️ for the most cutu girl in the world
+    </div>
+
+    <script>
+        // ============================================================
+        // AUDIO HANDLING
+        // ============================================================
+        const audio = document.getElementById('background-music');
+        const playButton = document.getElementById('play-button');
+        const musicWaves = document.getElementById('music-waves');
+        let isPlaying = false;
+        let audioStarted = false;
+
+        function startAudio() {
+            if (audioStarted) return;
+            audio.play().then(() => {
+                audioStarted = true;
+                isPlaying = true;
+                updatePlayButton();
+            }).catch(() => {});
+        }
+
+        function updatePlayButton() {
+            if (isPlaying) {
+                playButton.classList.add('playing');
+                musicWaves.style.display = 'flex';
+                document.querySelector('.music-text').textContent = 'Now Playing';
+            } else {
+                playButton.classList.remove('playing');
+                musicWaves.style.display = 'none';
+                document.querySelector('.music-text').textContent = 'Play Our Song';
+            }
+        }
+
+        function togglePlay(e) {
+            e.stopPropagation();
+            if (!audioStarted) {
+                startAudio();
+                return;
+            }
+            if (isPlaying) {
+                audio.pause();
+                isPlaying = false;
+            } else {
+                audio.play();
+                isPlaying = true;
+            }
+            updatePlayButton();
+        }
+
+        window.addEventListener('load', function() {
+            setTimeout(startAudio, 500);
+        });
+
+        document.addEventListener('touchstart', startAudio, { once: true });
+        document.addEventListener('click', startAudio, { once: true });
+
+        playButton.addEventListener('click', togglePlay);
+        playButton.addEventListener('touchstart', function(e) {
+            e.preventDefault();
+            togglePlay(e);
+        });
+
+        // ============================================================
+        // RESPONSIVE CAROUSEL
+        // ============================================================
+        let radius, imgWidth, imgHeight;
+        
+        function setDimensions() {
+            const isMobile = window.innerWidth <= 768;
+            if (isMobile) {
+                radius = 150;
+                imgWidth = 80;
+                imgHeight = 110;
+            } else {
+                radius = 240;
+                imgWidth = 120;
+                imgHeight = 170;
+            }
+            ospin.style.width = imgWidth + "px";
+            ospin.style.height = imgHeight + "px";
+            ground.style.width = radius * 3 + "px";
+            ground.style.height = radius * 3 + "px";
+        }
+
+        // ============================================================
+        // STARS - MORE STARS IN SKY
+        // ============================================================
+        const starCanvas = document.getElementById('stars');
+        const ctx = starCanvas.getContext('2d');
+        let W = window.innerWidth, H = window.innerHeight;
+        starCanvas.width = W; 
+        starCanvas.height = H;
+        
+        // MORE STARS - 250 instead of 150
+        let stars = [];
+        for(let i = 0; i < 250; i++) {
+            stars.push({
+                x: Math.random() * W,
+                y: Math.random() * H,
+                r: Math.random() * 1.8 + 0.3,
+                alpha: Math.random(),
+                dx: Math.random() * 0.02 + 0.005,
+                twinkleSpeed: Math.random() * 0.02 + 0.01
+            });
+        }
+        
+        function drawStars() {
+            ctx.clearRect(0, 0, W, H);
+            for(let s of stars) {
+                ctx.save();
+                const twinkle = 0.6 + 0.4 * Math.sin(s.alpha);
+                ctx.globalAlpha = twinkle;
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, s.r, 0, 2 * Math.PI);
+                ctx.fillStyle = "#fff";
+                ctx.shadowColor = "#fff";
+                ctx.shadowBlur = 6;
+                ctx.fill();
+                ctx.restore();
+                s.alpha += s.twinkleSpeed;
+            }
+            requestAnimationFrame(drawStars);
+        }
+        drawStars();
+
+        // ============================================================
+        // ULTRA REALISTIC SHOOTING STARS - LONG DISTANCE, MULTIPLE STARS
+        // ============================================================
+        const fallCanvas = document.getElementById('falling-stars');
+        const fctx = fallCanvas.getContext('2d');
+        fallCanvas.width = W; 
+        fallCanvas.height = H;
+        
+        let shootingStars = [];
+        
+        function spawnShootingStar() {
+            // Allow 2-4 stars at a time
+            const activeCount = shootingStars.filter(s => s.active).length;
+            if (activeCount >= 4) return;
+            
+            // Spread across top area
+            const startX = Math.random() * (W * 0.5);
+            const startY = Math.random() * (H * 0.25);
+            
+            // Angle: top-left to bottom-right (15° to 40°)
+            const angle = 0.25 + (Math.random() * 0.4);
+            
+            // LONG DISTANCE - 200-350px tail
+            const length = Math.random() * 150 + 200;
+            
+            // Slow speed for realistic feel
+            const speed = Math.random() * 2 + 1.2;
+            
+            // Very long lifetime for full screen travel
+            const maxLife = Math.random() * 120 + 140;
+            
+            shootingStars.push({
+                x: startX,
+                y: startY,
+                length: length,
+                speed: speed,
+                angle: angle,
+                alpha: 0,
+                maxAlpha: Math.random() * 0.25 + 0.5,
+                life: 0,
+                maxLife: maxLife,
+                active: true,
+                tailWidth: Math.random() * 1.5 + 1.5,
+                trail: []
+            });
+        }
+        
+        function scheduleShootingStar() {
+            // Spawn 1-2 stars at a time
+            const count = Math.floor(Math.random() * 2) + 1;
+            for (let i = 0; i < count; i++) {
+                setTimeout(() => {
+                    spawnShootingStar();
+                }, i * 300);
+            }
+            
+            // Schedule next batch
+            setTimeout(scheduleShootingStar, Math.random() * 2500 + 1500);
+        }
+        
+        // Start spawning after 1 second
+        setTimeout(scheduleShootingStar, 1000);
+        
+        function drawShootingStars() {
+            fctx.clearRect(0, 0, W, H);
+            
+            for (let i = shootingStars.length - 1; i >= 0; i--) {
+                const s = shootingStars[i];
+                
+                // Move in direction
+                s.x += Math.cos(s.angle) * s.speed;
+                s.y += Math.sin(s.angle) * s.speed;
+                s.life++;
+                
+                // Store trail
+                s.trail.push({x: s.x, y: s.y});
+                if (s.trail.length > 40) {
+                    s.trail.shift();
+                }
+                
+                // Alpha: slow fade in, long bright, slow fade out
+                if (s.life < 30) {
+                    s.alpha = (s.life / 30) * s.maxAlpha;
+                } else if (s.life > s.maxLife - 35) {
+                    s.alpha = ((s.maxLife - s.life) / 35) * s.maxAlpha;
+                } else {
+                    s.alpha = s.maxAlpha;
+                }
+                
+                // Remove if out of bounds or life ended
+                if (s.x > W + 200 || s.y > H + 200 || s.life > s.maxLife || s.alpha < 0.01) {
+                    shootingStars.splice(i, 1);
+                    continue;
+                }
+                
+                fctx.save();
+                
+                // === VERY LONG TAIL ===
+                const tailX = s.x - Math.cos(s.angle) * s.length;
+                const tailY = s.y - Math.sin(s.angle) * s.length;
+                
+                // Main tail gradient - smooth fade
+                const gradient = fctx.createLinearGradient(s.x, s.y, tailX, tailY);
+                gradient.addColorStop(0, `rgba(255, 255, 255, ${s.alpha})`);
+                gradient.addColorStop(0.08, `rgba(245, 248, 255, ${s.alpha * 0.85})`);
+                gradient.addColorStop(0.2, `rgba(220, 235, 255, ${s.alpha * 0.65})`);
+                gradient.addColorStop(0.4, `rgba(190, 215, 255, ${s.alpha * 0.45})`);
+                gradient.addColorStop(0.6, `rgba(160, 195, 255, ${s.alpha * 0.28})`);
+                gradient.addColorStop(0.8, `rgba(130, 175, 255, ${s.alpha * 0.14})`);
+                gradient.addColorStop(1, `rgba(100, 150, 255, 0)`);
+                
+                // Main tail stroke
+                fctx.beginPath();
+                fctx.moveTo(s.x, s.y);
+                fctx.lineTo(tailX, tailY);
+                fctx.strokeStyle = gradient;
+                fctx.lineWidth = s.tailWidth;
+                fctx.shadowColor = `rgba(150, 180, 255, ${s.alpha * 0.2})`;
+                fctx.shadowBlur = 30;
+                fctx.stroke();
+                
+                // === SOFT GLOW TAIL (wider) ===
+                const softGradient = fctx.createLinearGradient(s.x, s.y, tailX, tailY);
+                softGradient.addColorStop(0, `rgba(200, 220, 255, ${s.alpha * 0.25})`);
+                softGradient.addColorStop(0.4, `rgba(150, 185, 255, ${s.alpha * 0.12})`);
+                softGradient.addColorStop(0.7, `rgba(120, 160, 255, ${s.alpha * 0.05})`);
+                softGradient.addColorStop(1, `rgba(100, 140, 255, 0)`);
+                
+                fctx.beginPath();
+                fctx.moveTo(s.x, s.y);
+                fctx.lineTo(tailX, tailY);
+                fctx.strokeStyle = softGradient;
+                fctx.lineWidth = s.tailWidth * 5;
+                fctx.shadowBlur = 50;
+                fctx.shadowColor = `rgba(150, 180, 255, ${s.alpha * 0.08})`;
+                fctx.stroke();
+                
+                // === HEAD GLOW ===
+                const glowGradient = fctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, 25);
+                glowGradient.addColorStop(0, `rgba(255, 255, 255, ${s.alpha * 0.95})`);
+                glowGradient.addColorStop(0.1, `rgba(240, 245, 255, ${s.alpha * 0.6})`);
+                glowGradient.addColorStop(0.3, `rgba(210, 225, 255, ${s.alpha * 0.3})`);
+                glowGradient.addColorStop(0.6, `rgba(180, 210, 255, ${s.alpha * 0.12})`);
+                glowGradient.addColorStop(1, `rgba(180, 210, 255, 0)`);
+                
+                fctx.beginPath();
+                fctx.arc(s.x, s.y, 25, 0, 2 * Math.PI);
+                fctx.fillStyle = glowGradient;
+                fctx.shadowBlur = 45;
+                fctx.shadowColor = `rgba(255, 255, 255, ${s.alpha * 0.12})`;
+                fctx.fill();
+                
+                // === BRIGHT CORE ===
+                fctx.beginPath();
+                fctx.arc(s.x, s.y, 3, 0, 2 * Math.PI);
+                fctx.fillStyle = `rgba(255, 255, 255, ${s.alpha * 0.95})`;
+                fctx.shadowBlur = 25;
+                fctx.shadowColor = `rgba(255, 255, 255, ${s.alpha * 0.3})`;
+                fctx.fill();
+                
+                fctx.restore();
+            }
+            
+            requestAnimationFrame(drawShootingStars);
+        }
+        drawShootingStars();
+
+        // ============================================================
+        // 3D CAROUSEL
+        // ============================================================
+        var autoRotate = true;
+        var rotateSpeed = -60;
+        var odrag = document.getElementById('drag-container');
+        var ospin = document.getElementById('spin-container');
+        var ground = document.getElementById('ground');
+        
+        function getImageElements() {
+            return ospin.querySelectorAll('img');
+        }
+        
+        setDimensions();
+        
+        function init(delayTime) {
+            var aEle = getImageElements();
+            var total = aEle.length;
+            if (total === 0) return;
+            
+            for (var i = 0; i < total; i++) {
+                aEle[i].style.transform = "rotateY(" + (i * (360 / total)) + "deg) translateZ(" + radius + "px)";
+                aEle[i].style.transition = "transform 0.8s";
+                aEle[i].style.transitionDelay = delayTime || (total - i) / 5 + "s";
+            }
+        }
+        
+        function applyTranform(obj) {
+            if(tY > 180) tY = 180;
+            if(tY < 0) tY = 0;
+            obj.style.transform = "rotateX(" + (-tY) + "deg) rotateY(" + (tX) + "deg)";
+        }
+        
+        function playSpin(yes) {
+            ospin.style.animationPlayState = (yes ? 'running' : 'paused');
+        }
+        
+        var desX = 0, desY = 0, tX = 0, tY = 10;
+        
+        if (autoRotate) {
+            var animationName = (rotateSpeed > 0 ? 'spin' : 'spinRevert');
+            ospin.style.animation = `${animationName} ${Math.abs(rotateSpeed)}s infinite linear`;
+        }
+        
+        // Touch events
+        var startX, startY, isDragging = false;
+        
+        document.addEventListener('touchstart', function(e) {
+            if (e.target.closest('.music-player')) return;
+            var touch = e.touches[0];
+            startX = touch.clientX;
+            startY = touch.clientY;
+            isDragging = true;
+            clearInterval(odrag.timer);
+            playSpin(false);
+        }, { passive: true });
+        
+        document.addEventListener('touchmove', function(e) {
+            if (!isDragging || e.target.closest('.music-player')) return;
+            var touch = e.touches[0];
+            var dx = touch.clientX - startX;
+            var dy = touch.clientY - startY;
+            tX += dx * 0.08;
+            tY += dy * 0.08;
+            applyTranform(odrag);
+            startX = touch.clientX;
+            startY = touch.clientY;
+        }, { passive: true });
+        
+        document.addEventListener('touchend', function(e) {
+            if (!isDragging) return;
+            isDragging = false;
+            odrag.timer = setInterval(function () {
+                desX *= 0.95;
+                desY *= 0.95;
+                tX += desX * 0.1;
+                tY += desY * 0.1;
+                applyTranform(odrag);
+                playSpin(false);
+                if (Math.abs(desX) < 0.5 && Math.abs(desY) < 0.5) {
+                    clearInterval(odrag.timer);
+                    playSpin(true);
+                }
+            }, 17);
+        }, { passive: true });
+        
+        // Mouse events
+        document.onpointerdown = function (e) {
+            if (e.target.closest('.music-player')) return;
+            clearInterval(odrag.timer);
+            e = e || window.event;
+            var sX = e.clientX,
+                sY = e.clientY;
+            
+            this.onpointermove = function (e) {
+                e = e || window.event;
+                var nX = e.clientX,
+                    nY = e.clientY;
+                desX = nX - sX;
+                desY = nY - sY;
+                tX += desX * 0.1;
+                tY += desY * 0.1;
+                applyTranform(odrag);
+                sX = nX;
+                sY = nY;
+            };
+            
+            this.onpointerup = function (e) {
+                odrag.timer = setInterval(function () {
+                    desX *= 0.95;
+                    desY *= 0.95;
+                    tX += desX * 0.1;
+                    tY += desY * 0.1;
+                    applyTranform(odrag);
+                    playSpin(false);
+                    if (Math.abs(desX) < 0.5 && Math.abs(desY) < 0.5) {
+                        clearInterval(odrag.timer);
+                        playSpin(true);
+                    }
+                }, 17);
+                this.onpointermove = this.onpointerup = null;
+            };
+            
+            return false;
+        };
+
+        // ============================================================
+        // RESIZE
+        // ============================================================
+        let resizeTimer;
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(function() {
+                W = window.innerWidth;
+                H = window.innerHeight;
+                starCanvas.width = W;
+                starCanvas.height = H;
+                fallCanvas.width = W;
+                fallCanvas.height = H;
+                
+                setDimensions();
+                init(1);
+            }, 300);
+        });
+        
+        // ============================================================
+        // INITIALIZE
+        // ============================================================
+        setTimeout(function() {
+            init();
+        }, 800);
+    </script>
+</body>
+</html>
