@@ -438,23 +438,6 @@
             }
         }
         
-        .youtube-player {
-            top: auto;
-            bottom: 70px;
-            left: 15px;
-            gap: 6px;
-        }
-
-        .youtube-player iframe {
-            width: 200px;
-            height: 200px;
-            border: 0;
-        }
-
-        .youtube-player a {
-            color: white;
-            font-size: 12px;
-        }
     </style>
     <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&display=swap" rel="stylesheet">
 </head>
@@ -478,10 +461,7 @@
         <div class="music-text">Play Our Song</div>
     </div>
 
-    <div class="music-player youtube-player">
-        <div id="youtube-player"></div>
-        <a href="https://youtu.be/mRP72Ib2e9I" target="_blank" rel="noopener noreferrer">Open song on YouTube</a>
-    </div>
+    <audio id="background-music" src="Yellow.mp3" loop preload="metadata"></audio>
 
     <div id="night-sky">
         
@@ -529,21 +509,20 @@
         // ============================================================
         // AUDIO HANDLING
         // ============================================================
+        const audio = document.getElementById('background-music');
         const playButton = document.getElementById('play-button');
         const musicWaves = document.getElementById('music-waves');
         const musicText = document.querySelector('.music-text');
-        let musicPlayer;
-        let playerReady = false;
-        let isPlaying = false;
+        let playPending = false;
 
         playButton.setAttribute('role', 'button');
         playButton.setAttribute('tabindex', '0');
         playButton.setAttribute('aria-label', 'Play our song');
         playButton.setAttribute('aria-pressed', 'false');
         musicText.setAttribute('aria-live', 'polite');
-        musicText.textContent = 'Loading song...';
 
         function updatePlayButton() {
+            const isPlaying = !audio.paused && !audio.ended;
             playButton.classList.toggle('playing', isPlaying);
             playButton.setAttribute('aria-pressed', String(isPlaying));
             playButton.setAttribute('aria-label', isPlaying ? 'Pause our song' : 'Play our song');
@@ -551,48 +530,34 @@
             musicText.textContent = isPlaying ? 'Now Playing' : 'Play Our Song';
         }
 
-        window.onYouTubeIframeAPIReady = function() {
-            musicPlayer = new YT.Player('youtube-player', {
-                width: 200,
-                height: 200,
-                videoId: 'mRP72Ib2e9I',
-                playerVars: {
-                    playsinline: 1,
-                    loop: 1,
-                    playlist: 'mRP72Ib2e9I',
-                    ...(location.protocol.startsWith('http') ? { origin: location.origin } : {})
-                },
-                events: {
-                    onReady: function(event) {
-                        playerReady = true;
-                        event.target.getIframe().title = 'Our song on YouTube';
-                        updatePlayButton();
-                    },
-                    onStateChange: function(event) {
-                        isPlaying = event.data === YT.PlayerState.PLAYING;
-                        updatePlayButton();
-                    },
-                    onAutoplayBlocked: function() {
-                        isPlaying = false;
-                        updatePlayButton();
-                    },
-                    onError: function() {
-                        playerReady = false;
-                        isPlaying = false;
-                        updatePlayButton();
-                        musicText.textContent = 'Open song on YouTube';
-                    }
-                }
-            });
-        };
-
-        function togglePlay(event) {
+        async function togglePlay(event) {
             event.stopPropagation();
-            if (!playerReady) return;
-            if (isPlaying) musicPlayer.pauseVideo();
-            else musicPlayer.playVideo();
+            if (playPending) return;
+            if (!audio.paused) {
+                audio.pause();
+                return;
+            }
+            playPending = true;
+            musicText.textContent = 'Loading song...';
+            try {
+                await audio.play();
+            } catch (error) {
+                updatePlayButton();
+                musicText.textContent = error.name === 'NotAllowedError'
+                    ? 'Tap to play song'
+                    : 'Song unavailable. Tap to retry';
+            } finally {
+                playPending = false;
+            }
         }
 
+        audio.addEventListener('playing', updatePlayButton);
+        audio.addEventListener('pause', updatePlayButton);
+        audio.addEventListener('ended', updatePlayButton);
+        audio.addEventListener('error', function() {
+            updatePlayButton();
+            musicText.textContent = 'Song could not be loaded';
+        });
         playButton.addEventListener('click', togglePlay);
         playButton.addEventListener('keydown', function(event) {
             if (event.key === 'Enter' || event.key === ' ') {
@@ -600,13 +565,6 @@
                 togglePlay(event);
             }
         });
-
-        const youtubeApi = document.createElement('script');
-        youtubeApi.src = 'https://www.youtube.com/iframe_api';
-        youtubeApi.onerror = function() {
-            musicText.textContent = 'Open song on YouTube';
-        };
-        document.head.appendChild(youtubeApi);
 
         // ============================================================
         // RESPONSIVE CAROUSEL
